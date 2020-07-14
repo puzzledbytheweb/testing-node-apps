@@ -1,34 +1,20 @@
-// Testing Middleware
-
-// 💣 remove this todo test (it's only here so you don't get an error about missing tests)
-
-// 🐨 you'll need both of these:
 import {UnauthorizedError} from 'express-jwt'
+import {buildRes, buildReq, buildNext} from 'utils/generate'
 import errorMiddleware from '../error-middleware'
-
-const req = {}
-const next = jest.fn(() => next)
-const code = 'some_error_code'
-const message = 'Some message'
-
-const error = new UnauthorizedError(code, {
-  message,
-})
-
-const getRes = (overrides) => {
-  const res = {
-    json: jest.fn(() => res),
-    status: jest.fn(() => res),
-    ...overrides,
-  }
-
-  return res
-}
 
 describe('errorMiddleware handles all cases', () => {
   // 🐨 Write a test for the UnauthorizedError case
   test('handles UnauthorizedError case, responding with a 401', () => {
-    const res = getRes()
+    const code = 'some_error_code'
+    const message = 'Some message'
+    const error = new UnauthorizedError(code, {
+      message,
+    })
+
+    const res = buildRes()
+    const req = buildReq()
+    const next = buildNext()
+
     errorMiddleware(error, req, res, next)
 
     expect(next).not.toHaveBeenCalled()
@@ -43,7 +29,11 @@ describe('errorMiddleware handles all cases', () => {
 
   // 🐨 Write a test for the headersSent case
   test('handles headersSent error case, calling next', () => {
-    const res = getRes({headersSent: true})
+    const res = buildRes({headersSent: true})
+    const req = buildReq()
+    const next = buildNext()
+    const error = new Error('Great Error!')
+
     errorMiddleware(error, req, res, next)
 
     expect(next).toHaveBeenCalledWith(error)
@@ -53,11 +43,23 @@ describe('errorMiddleware handles all cases', () => {
   })
 
   // 🐨 Write a test for the else case (responds with a 500)
-  test('handles fallback case', () => {
-    const res = getRes()
-    const newError = new TypeError('Oh no type error')
+  test('handles fallback case, returning a 500', () => {
+    const res = buildRes()
+    const req = buildReq()
+    const next = buildNext()
+
+    const newError = new Error('Oh no!!')
+
     errorMiddleware(newError, req, res, next)
 
-    expect(res.status).toBeCalledWith(500)
+    expect(next).not.toHaveBeenCalled()
+
+    expect(res.json).toHaveBeenCalledWith({
+      message: newError.message,
+      stack: newError.stack,
+    })
+    expect(res.json).toHaveBeenCalledTimes(1)
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.status).toHaveBeenCalledTimes(1)
   })
 })
